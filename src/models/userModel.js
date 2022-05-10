@@ -19,12 +19,6 @@ const userSchema = new mongoose.Schema({
       required: true,
       unique: true,
       // lowercase: true,
-      // validate: {
-      //   validator: function (email) {
-      //     return /^\w+([\.-]?\w+)@\w+([\.-]?\w+)(\.\w{2,3})+$/.test(email)
-      //   }, message: 'Please Fill a valid Email Address.',
-      //   isAsync: false
-      // }
   
     },
     phone: {
