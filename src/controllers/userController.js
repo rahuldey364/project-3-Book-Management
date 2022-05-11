@@ -100,9 +100,6 @@ const userLogIn = async function (req, res) {
         .status(400)
         .send({ status: false, message: "email is required" });
     }
-    if (isvalid(userEmail)) {
-      return res.status(400).send({ status: false, msg: "Email is required" });
-    }
     if (!/^\w+([\.-]?\w+)@\w+([\.-]?\w+)(\.\w{2,3})+$/.test(req.body.email)) {
       return res
         .status(400)
@@ -112,7 +109,7 @@ const userLogIn = async function (req, res) {
     if (!userPassword) {
       return res
         .status(400)
-        .send({ status: false, message: "email is required" });
+        .send({ status: false, message: "passworrd is required" });
     }
     if (req.body.password.trim().length <= 6) {
       return res
@@ -130,10 +127,10 @@ const userLogIn = async function (req, res) {
     }
     let token = jwt.sign(
       {
-        authorId: isUser._id.toString(),
+        userId: isUser._id.toString(),
       },
       "functionUp",
-      { expiresIn: "300s" }
+      { expiresIn: "1200s" }
     );
     // res.setHeader("x-api-key",token)
     res.status(201).send({ status: true, data: { token: token } });

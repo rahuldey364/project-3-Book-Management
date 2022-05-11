@@ -1,6 +1,7 @@
 const bookModel = require("../models/bookModel.js");
 const userModel = require("../models/userModel.js");
 const reviewModel = require("../models/reviewModel");
+// const moment = require("moment");
 
 const isvalid = function (value) {
   if (typeof value === "undefined" || value === null) return false;
@@ -79,14 +80,13 @@ let createBook = async function (req, res) {
     category,
     subcategory,
     reviews,
-    isDeleted,
     releasedAt,
   } = req.body;
 
-  if (isDeleted) {
-    if (isDeleted == true) {
-      return res.status(400).send({ status: false, msg: "data is not vailid" });
-    }
+
+  let decodedToken = req.decodedToken
+  if(decodedToken.userId !== userId){
+    return res.status(400).send({ status: false, msg: "you cannot create book with some others userId" });
   }
 
   if (!isvalid(title)) {
@@ -104,6 +104,11 @@ let createBook = async function (req, res) {
 
   if (!isvalid(category)) {
     return res.status(400).send({ status: false, msg: "category is required" });
+  }
+  if (subcategory.length == 0) {
+    return res
+      .status(400)
+      .send({ status: false, msg: "subcategory is required" });
   }
 
   if (subcategory) {
@@ -143,11 +148,16 @@ let createBook = async function (req, res) {
   }
 
   let uniqueISBN = await bookModel.findOne({ ISBN: ISBN });
-  if (uniqueISBN)
+  if (uniqueISBN) {
     return res.status(409).send({ status: false, msg: " ISBN already exists" });
+  }
+  if (!isvalid(releasedAt)) {
+    return res
+      .status(400)
+      .send({ status: false, msg: "released date is required" });
+  }
 
-  let check =
-    /^(?:(?:(?:1[6-9]|[2-9]\d)?(?:0[48]|[2468][048]|[13579][26])|(?:(?:16|[2468][048]|[3579][26])00)))(\/|-|\.)0?2\3(?:29)$/;
+  let check = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
   if (releasedAt) {
     if (!check.test(releasedAt)) {
       // need to solve this later
@@ -157,9 +167,10 @@ let createBook = async function (req, res) {
     }
   }
 
-  if (!releasedAt) {
-    req.body.releasedAt = new Date();
-  }
+  // if (!releasedAt) {
+  //   req.body.releasedAt = moment().format("YYYY-MM-DD");
+
+  // }
 
   let dataBook = await bookModel.create(req.body);
 
@@ -205,38 +216,48 @@ const GetData = async function (req, res) {
 };
 
 // const getBookDetails = async function (req, res) {
-//     try {
-//       let bookId = req.params.bookId
-//       if (!bookId) {
-//         return res.status(400).send({
-//           status: false,
-//           message: "enter a Book Id  first",
-//         });
-//       }
-//       const isValidBook = await bookModel.findOne({ _id: bookId }); //{ _Id}
-//       if (!isValidBook) {
-//         return res.status(404).send({
-//           status: false,
-//           message: "you have entered a invalid book id  ",
-//         });
-//       }
-//       const getReviews = await reviewModel.find({ collegeId: isValidBook._id, isDeleted: false })
-//     //   if (getIntern.length == 0) {
-//     //     return res.status(404).send({
-//     //       status: false,
-//     //       message: "no intern found with your provided college details",
-//     //     });
-//     //   }
-//     //   const getAllIntern = {
-
-//     //     reviewsData: getReviews
-//     //   };
-//     isValidBook.reviewsData=getReviews
-//       res.status(200).send({ status: true, data: isValidBook });
-//     } catch (err) {
-//       res.status(500).send({ status: false, message: err.message });
+//   try {
+//     let bookId = req.params.bookId;
+//     if (!bookId) {
+//       return res
+//         .status(400)
+//         .send({ status: false, message: "enter a Book Id  first" });
 //     }
-//   };
+//     const isValidBook = await bookModel.findOne({ _id: bookId }); //{ _Id}
+//     if (!isValidBook) {
+//       return res.status(404).send({
+//         status: false,
+//         message: "you have entered a invalid book id  ",
+//       });
+//     }
+//     const getReviews = await reviewModel.find({
+//       bookId: bookId,
+//       isDeleted: false,
+//     });
+//     let len = getReviews.length;
+
+//     let Data = {
+//       _id: isValidBook._id,
+//       title: isValidBook.title,
+//       excerpt: isValidBook.excerpt,
+//       userId: isValidBook.userId,
+//       category: isValidBook.category,
+//       subcategory: isValidBook.subcategory,
+//       deleted: isValidBook.isDeleted,
+//       reviews: len,
+//       deletedAt: isValidBook.deletedAt,
+//       releasedAt: isValidBook.releasedAt,
+//       createdAt: isValidBook.createdAt,
+//       updatedAt: isValidBook.updatedAt,
+//       reviewsData: getReviews,
+//     };
+
+//     // isValidBook.reviewsData = (getReviews.length != 0) ? getReviews : "No reviews"
+//     res.status(200).send({ status: true, data: Data });
+//   } catch (err) {
+//     res.status(500).send({ status: false, message: err.message });
+//   }
+// };
 
 const getBookDetails = async function (req, res) {
   try {
@@ -246,7 +267,7 @@ const getBookDetails = async function (req, res) {
         .status(400)
         .send({ status: false, message: "enter a Book Id  first" });
     }
-    const isValidBook = await bookModel.findOne({ _id: bookId }); //{ _Id}
+    const isValidBook = await bookModel.findOne({ _id: bookId }).lean(); //{ _Id}
     if (!isValidBook) {
       return res.status(404).send({
         status: false,
@@ -257,26 +278,10 @@ const getBookDetails = async function (req, res) {
       bookId: bookId,
       isDeleted: false,
     });
-    let len = getReviews.length;
 
-    let Data = {
-      _id: isValidBook._id,
-      title: isValidBook.title,
-      excerpt: isValidBook.excerpt,
-      userId: isValidBook.userId,
-      category: isValidBook.category,
-      subcategory: isValidBook.subcategory,
-      deleted: isValidBook.isDeleted,
-      reviews: len,
-      deletedAt: isValidBook.deletedAt,
-      releasedAt: isValidBook.releasedAt,
-      createdAt: isValidBook.createdAt,
-      updatedAt: isValidBook.updatedAt,
-      reviewsData: getReviews,
-    };
-
-    // isValidBook.reviewsData = (getReviews.length != 0) ? getReviews : "No reviews"
-    res.status(200).send({ status: true, data: Data });
+    delete isValidBook.ISBN;
+    isValidBook.reviewsData = getReviews;
+    res.status(200).send({ status: true, data: isValidBook });
   } catch (err) {
     res.status(500).send({ status: false, message: err.message });
   }
@@ -333,31 +338,59 @@ const updateBooks = async function (req, res) {
   }
 };
 
+// const deleteBooksbyId = async function (req, res) {
+//   try {
+//     const bookId = req.params.bookId;
+//     if (!bookId)
+//       return res
+//         .status(400)
+//         .send({ status: false, msg: "BookId should be present in params" });
+//     let check = await bookModel.findOne({ _id: bookId });
+//     let checking = check.isDeleted;
+//     if (checking == true)
+//       return res.status(404).send({ status: false, msg: "Already deleted" });
+//     if (checking == false) {
+//       let deleteBlog = await bookModel.findOneAndUpdate(
+//         { _id: bookId },
+//         { $set: { isDeleted: true, deletedAt: new Date() } },
+//         { new: true, upsert: true }
+//       ); // we can change new Date() to moment().format()
+//       res
+//         .status(200)
+//         .send({ status: true, msg: "book is deleted successfully" });
+//     }
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).send({ status: false, msg: "error", err: err.message });
+//   }
+
+// };
 
 
-const deleteBooksbyId = async function(req ,res){
-    try {
-        const bookId = req.params.bookId
-        if(!bookId) return res.status(400).send({status : false, msg : "BookId should be present in params"})
-        let check = await booksModel.findOne({ _id : bookId})
-        let checking = check.isDeleted
-        if(checking == true) return res.status(404).send({status : false,msg : "Already deleted"})
-        if(checking == false){
-        let deleteBlog = await booksModel.findOneAndUpdate({ _id: bookId }, {$set :{ isDeleted: true, deletedAt: new Date() }}, { new: true, upsert : true }) // we can change new Date() to moment().format()
-            res.status(200).send({ status:true,msg: "book is deleted successfully" })
-        } 
-  
-    }
-    catch(err){
-        console.log(err)
-        res.status(500).send({ status: false, msg: "error", err: err.message })
-    }
+const deleteBooksbyId = async function (req, res) {
+  try {
+    const bookId = req.params.bookId
+    console.log(bookId)
+    if (!bookId) return res.status(400).send({ status: false, msg: "BookId should be present in params" })
+    // let check = await bookModel.findOne({ _id: bookId,isDeleted:true })
+    
+    // if (check) return res.status(404).send({ status: false, msg: "Already deleted" })
+    // if (!check) {
+      let deleteBlog = await bookModel.find({ _id: bookId,isDeleted:false }).updateMany( { $set: { isDeleted: true, deletedAt: new Date() } }, { new: true, upsert: true }) // we can change new Date() to moment().format()
+      console.log(deleteBlog)
+      if (!deleteBlog)return res.status(404).send({ status: false, msg: "no such blog exist" })
+      res.status(200).send({ status: true, msg: "book is deleted successfully" })
+    //}
+
+  }
+  catch (err) {
+    console.log(err)
+    res.status(500).send({ status: false, msg: "error", err: err.message })
+  }
 }
-
-
 
 module.exports.createBook = createBook;
 module.exports.GetData = GetData;
 module.exports.getBookDetails = getBookDetails;
 module.exports.updateBooks = updateBooks;
-module.exports.deleteBooksbyId = deleteBooksbyId;
+module.exports.deleteBooksbyId  = deleteBooksbyId ;
