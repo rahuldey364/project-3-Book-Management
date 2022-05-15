@@ -26,7 +26,7 @@ let authorization = async function (req, res, next) {
     if (!isvalidId) {
       return res
         .status(401)
-        .send({ status: false, data: "Please enter a valid blogId" });
+        .send({ status: false, data: "Please enter a valid bookId" });
     }
     // console.log(isvalidId);
     let userToBeModified = isvalidId.userId.toString();
@@ -39,12 +39,12 @@ let authorization = async function (req, res, next) {
           data: "user logged is not allowed to modify the requested users data",
         });
     }
-    let user = await userModel.findById(userToBeModified);
-    if (!user) {
-      return res
-        .status(404)
-        .send({ status: false, data: "no such user exists" });
-    }
+    // let user = await userModel.findById(userToBeModified);
+    // if (!user) {
+    //   return res
+    //     .status(404)
+    //     .send({ status: false, data: "no such user exists" });
+    // }
     next();
   } catch (err) {
     res.status(500).send({ status: false, data: err.message });
